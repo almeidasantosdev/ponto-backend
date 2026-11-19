@@ -1,6 +1,6 @@
 # Ponto Digital — API
 
-API do ponto eletrônico usada pelo `pontofrontend`. Recebe entrada e saída de um funcionário e devolve o histórico daquele e-mail.
+API do ponto eletrônico usada pelo `ponto-frontend`. Recebe entrada e saída de um funcionário e devolve o histórico daquele e-mail.
 
 Feita em Node.js, Express e TypeScript. Os registros ficam só em memória: ao reiniciar o servidor, o histórico some. A rota `POST /punch` só aceita IPs listados em `AUTHORIZED_IPS`. A rota `GET /report/:email` devolve o histórico sem esse filtro.
 
