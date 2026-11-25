@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.git
+.github
+.env
+*.md
+k8s
+test
+**/*.spec.ts
+**/*.e2e-spec.ts
+*.tsbuildinfo
