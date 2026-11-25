@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ponto-backend-config
+  labels:
+    app: ponto-backend
+data:
+  PORT: "10000"
+  NODE_ENV: "production"
+  ALLOWED_ORIGIN: "https://seu-projeto-ponto.vercel.app"
