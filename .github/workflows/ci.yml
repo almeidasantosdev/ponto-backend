@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: install, lint, build e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Testes
+        run: npm test
+
+  kind:
+    name: Kubernetes (Kind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Build da imagem
+        run: docker build -t ponto-backend:local .
+
+      - name: Subir cluster Kind
+        uses: helm/kind-action@v1.15.2
+        with:
+          cluster_name: ponto
+
+      - name: Carregar a imagem no cluster
+        run: kind load docker-image ponto-backend:local --name ponto
+
+      - name: Aplicar os manifests
+        run: |
+          kubectl apply -f k8s/configmap.yaml -f k8s/secret.example.yaml
+          kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml
+
+      - name: Esperar o Deployment
+        run: kubectl rollout status deployment/ponto-backend --timeout=180s
+
+      - name: Verificar /health
+        run: |
+          set -euo pipefail
+          kubectl port-forward svc/ponto-backend 10000:10000 >/tmp/port-forward.log 2>&1 &
+          pf_pid=$!
+          cleanup() {
+            kill "$pf_pid" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:10000/health; then
+              echo
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Falha ao acessar /health'
+          cat /tmp/port-forward.log || true
+          kubectl get pods -o wide || true
+          kubectl describe deployment ponto-backend || true
+          kubectl logs deployment/ponto-backend --all-containers || true
+          exit 1
